@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美团酒店转DPLink</title>
+    <style>
+        :root {
+            --meituan-yellow: #FFC300;
+            --text-color: #333;
+            --bg-color: #f4f4f4;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        .container {
+            background-color: var(--white);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            width: 90%;
+            max-width: 500px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box; /* 确保padding不撑大宽度 */
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            border-color: var(--meituan-yellow);
+            outline: none;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            background-color: #fafafa;
+            color: #555;
+            word-break: break-all;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-convert {
+            background-color: var(--meituan-yellow);
+            color: var(--text-color);
+        }
+
+        .btn-copy {
+            background-color: #e0e0e0;
+            color: var(--text-color);
+        }
+
+        /* 简单的提示消息样式 */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+        }
+
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein {
+            from {bottom: 0; opacity: 0;}
+            to {bottom: 30px; opacity: 1;}
+        }
+
+        @keyframes fadeout {
+            from {bottom: 30px; opacity: 1;}
+            to {bottom: 0; opacity: 0;}
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>美团酒店转 DPLink</h2>
+
+    <div class="input-group">
+        <label for="sourceUrl">输入原始链接 (http/https):</label>
+        <input type="text" id="sourceUrl" placeholder="例如: http://dpurl.cn/bWcWyoKz" oninput="autoConvert()">
+    </div>
+
+    <div class="input-group">
+        <label for="resultUrl">生成的 DPLink:</label>
+        <textarea id="resultUrl" readonly placeholder="imeituan://..."></textarea>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-convert" onclick="convertLink()">转换链接</button>
+        <button class="btn-copy" onclick="copyToClipboard()">复制结果</button>
+    </div>
+</div>
+
+<div id="toast">已复制到剪贴板！</div>
+
+<script>
+    // 核心转换逻辑
+    function convertLink() {
+        const sourceInput = document.getElementById('sourceUrl');
+        const resultOutput = document.getElementById('resultUrl');
+        const originalUrl = sourceInput.value.trim();
+
+        if (!originalUrl) {
+            resultOutput.value = "";
+            return;
+        }
+
+        // 1. 进行 URL 编码 (对应 http%3A%2F%2F...)
+        const encodedUrl = encodeURIComponent(originalUrl);
+
+        // 2. 拼接前缀
+        const prefix = "imeituan://www.meituan.com/web?url=";
+        
+        // 3. 输出结果
+        resultOutput.value = prefix + encodedUrl;
+    }
+
+    // 输入时自动转换，提升体验
+    function autoConvert() {
+        convertLink();
+    }
+
+    // 复制功能
+    function copyToClipboard() {
+        const resultOutput = document.getElementById('resultUrl');
+        
+        if (!resultOutput.value) {
+            showToast("没有内容可复制");
+            return;
+        }
+
+        // 选中文本
+        resultOutput.select();
+        resultOutput.setSelectionRange(0, 99999); // 适配移动端
+
+        // 执行复制
+        try {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(resultOutput.value).then(() => {
+                    showToast("复制成功！");
+                });
+            } else {
+                // 兼容旧浏览器
+                document.execCommand('copy');
+                showToast("复制成功！");
+            }
+        } catch (err) {
+            showToast("复制失败，请手动复制");
+        }
+    }
+
+    // 显示提示框
+    function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.className = "show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+</script>
+
+</body>
+</html>
