@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>点淘转转乐转链工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .card {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 25px;
+            color: #ff5000; /* 淘宝橙 */
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 13px;
+            box-sizing: border-box;
+            font-family: monospace;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #ff5000;
+        }
+
+        /* 新增的明显上传区域样式 */
+        .upload-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.2s;
+            background-color: #fafafa;
+            color: #666;
+        }
+        .upload-zone:hover {
+            border-color: #ff5000;
+            background-color: #fff5f0;
+            color: #ff5000;
+        }
+        .upload-zone span {
+            font-size: 15px;
+            font-weight: bold;
+            display: block;
+            margin-top: 5px;
+        }
+        .upload-zone i {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #ff5000;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        
+        .output-group {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px dashed #ddd;
+            display: none;
+        }
+        .result-box {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            word-break: break-all;
+            font-size: 12px;
+            color: #444;
+            margin-bottom: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .copy-btn {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>🎯 点淘转转乐转链工具</h1>
+
+    <div class="input-group">
+        <label>1. 输入普通链接</label>
+        <textarea id="inputUrl" placeholder="https://..."></textarea>
+    </div>
+
+    <div class="upload-zone" id="dropArea" onclick="document.getElementById('fileInput').click()">
+        <i>📷</i>
+        <span>上传或粘贴二维码</span>
+        <div style="font-size: 12px; font-weight: normal; margin-top: 5px; opacity: 0.7;">(支持截图后直接 Ctrl+V)</div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+    </div>
+
+    <button class="btn" onclick="convertLink()">⬇️ 生成 DPLink ⬇️</button>
+
+    <div class="output-group" id="outputGroup">
+        <label>转换结果：</label>
+        <div class="result-box" id="resultText"></div>
+        <div style="text-align: right;">
+            <button class="copy-btn" onclick="copyResult()">复制链接</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const PREFIX = "taobaoliveshare://xevddy.com/gateway/index.htm?source=netscape&targetUrl=";
+
+    // 统一处理文件逻辑
+    function handleFile(file) {
+        if (!file) return;
+        
+        // 视觉提示：正在解析
+        const zone = document.getElementById('dropArea');
+        const originalContent = zone.innerHTML;
+        zone.innerHTML = "<i>⏳</i><span>正在解析二维码...</span>";
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                context.drawImage(img, 0, 0);
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // 识别
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                if (code) {
+                    document.getElementById('inputUrl').value = code.data;
+                    zone.innerHTML = "<i>✅</i><span>识别成功！</span>";
+                    setTimeout(() => zone.innerHTML = originalContent, 2000);
+                    // 自动触发转换
+                    convertLink();
+                } else {
+                    zone.innerHTML = "<i>❌</i><span>未发现二维码，请重试</span>";
+                    setTimeout(() => zone.innerHTML = originalContent, 2000);
+                }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // 1. 监听点击上传的文件选择
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        if(e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    // 2. 监听全局粘贴 (Ctrl+V)
+    document.addEventListener('paste', function(event) {
+        const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+        for (let item of items) {
+            if (item.kind === 'file' && item.type.includes('image/')) {
+                handleFile(item.getAsFile());
+                event.preventDefault(); // 阻止默认粘贴行为（防止图片乱码进文本框）
+            }
+        }
+    });
+
+    function convertLink() {
+        const raw = document.getElementById('inputUrl').value.trim();
+        
+        if (!raw) {
+            alert("请先输入链接或上传二维码");
+            return;
+        }
+
+        // 简单容错：如果已经是 dplink，就不转了
+        if (raw.startsWith("taobaoliveshare://")) {
+            showResult(raw);
+            return;
+        }
+
+        const encoded = encodeURIComponent(raw);
+        const finalUrl = PREFIX + encoded;
+        
+        showResult(finalUrl);
+    }
+
+    function showResult(text) {
+        const resBox = document.getElementById('resultText');
+        const group = document.getElementById('outputGroup');
+        resBox.innerText = text;
+        group.style.display = 'block';
+    }
+
+    function copyResult() {
+        const text = document.getElementById('resultText').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert("复制成功！");
+        }).catch(() => alert("复制失败，请手动复制"));
+    }
+</script>
+
+</body>
+</html>
